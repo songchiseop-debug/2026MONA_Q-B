@@ -31,6 +31,10 @@ body{font-family:'Gothic A1','Pretendard','Apple SD Gothic Neo',sans-serif;backg
 .i-start{max-width:300px;margin:18px auto 6px;}
 .msn-note{margin-top:10px;font-size:11.5px;color:#E7B98A;line-height:1.55;background:rgba(231,120,90,.12);border:1px solid rgba(231,120,90,.4);border-radius:11px;padding:9px 12px;}
 .msn-note b{color:#F4C95D;}
+.msn-bonus{margin-top:9px;font-size:11.5px;color:#EAD9A8;background:rgba(82,183,136,.14);border:1px solid rgba(82,183,136,.4);border-radius:11px;padding:8px 12px;line-height:1.5;}
+.msn-bonus b{color:var(--gold);}
+.mission.cont{border-color:var(--gold);background:rgba(244,201,93,.16);color:#F7ECC9;}
+.mission.reset{border-color:rgba(120,160,140,.4);}
 #game{justify-content:center;}
 .i-logo{margin-top:16px;display:flex;justify-content:center;}
 .i-logo img{width:200px;filter:drop-shadow(0 2px 10px rgba(0,0,0,.45));}
@@ -221,9 +225,10 @@ body{font-family:'Gothic A1','Pretendard','Apple SD Gothic Neo',sans-serif;backg
       </div>
       <div class="msn" id="msnShare" onclick="doMission('share')">
         <span class="mi">🔗</span>
-        <span class="mtxt"><span class="mname">친구에게 공유하기</span><span class="mre"><b>💡 힌트</b> · 해설 보기 (최대 2회)</span></span>
+        <span class="mtxt"><span class="mname">친구에게 공유하기</span><span class="mre"><b>▶ 이어하기</b> · 게임오버 시 진행 그대로 (공유 2회 → 1회)</span></span>
         <span class="mst">하러가기</span>
       </div>
+      <div class="msn-bonus">📷 팔로우 + 📺 구독 <b>모두 인증</b>하면 <b>💡 힌트</b>를 추가로 드려요!</div>
       <div class="msn-note">⚠️ <b>구독·팔로우를 반드시 인증</b>해 주세요.<br>인증하지 않으시면 당첨에서 제외될 수 있습니다.</div>
     </div>
 
@@ -237,7 +242,7 @@ body{font-family:'Gothic A1','Pretendard','Apple SD Gothic Neo',sans-serif;backg
       <div class="mm-desc">아래 링크가 <b>복사되었어요!</b><br>카카오톡·문자 등에 붙여넣어 친구에게 보내주세요.</div>
       <div class="share-link" id="shareLinkBox"></div>
       <button class="btn btn-gold" onclick="copyShareLink()">🔗 링크 다시 복사</button>
-      <button class="btn btn-ghost" onclick="confirmShare()">공유했어요! 💡 힌트 받기</button>
+      <button class="btn btn-ghost" onclick="confirmShare()">공유했어요! ▶ 이어하기 받기</button>
       <button class="share-close" onclick="closeShare()">닫기</button>
     </div>
   </div>
@@ -290,13 +295,9 @@ body{font-family:'Gothic A1','Pretendard','Apple SD Gothic Neo',sans-serif;backg
   <div class="overlay" id="over">
     <img class="ov-owl" id="overOwl"/>
     <div class="ov-title">게임 오버</div>
-    <div class="ov-sub" id="overSub">목숨을 모두 사용했어요.<br>아래 미션을 완료하면 <b style="color:#F4C95D">한 번 더</b> 도전할 수 있어요!</div>
-    <div class="missions" id="missions">
-      <div class="mission" onclick="revive()"><span class="mi">📺</span> 용평 유튜브 구독하기</div>
-      <div class="mission" onclick="revive()"><span class="mi">📷</span> 인스타그램 팔로우하기</div>
-      <div class="mission" onclick="revive()"><span class="mi">🔗</span> 친구에게 공유하기</div>
-    </div>
-    <div class="ov-note" id="overNote">미션 인증 시 퍼즐판이 초기화되고 1회 재도전 기회가 주어집니다.</div>
+    <div class="ov-sub" id="overSub">목숨을 모두 사용했어요.</div>
+    <div class="missions" id="overBtns"></div>
+    <div class="ov-note" id="overNote">친구에게 공유하면 진행 상황 그대로 <b style="color:#F4C95D">이어서 도전</b>할 수 있어요!</div>
   </div>
 
   <!-- ================= COMPLETE + ENTRY ================= -->
@@ -383,20 +384,32 @@ function bgmStepPlay(s,t){
   if((s%8)===4) bdrum('snare',t);
   bdrum('hat',t);
 }
-function startBGM(){
+let bgmStarting=false;
+function playBGM(){
   const bgm=document.getElementById('bgm');
-  if(!bgm)return;
-  if(!muted&&bgm.paused){bgm.volume=BGM_VOL;const p=bgm.play();if(p&&p.catch)p.catch(()=>{});}
+  if(!bgm||muted||bgmStarting||!bgm.paused)return;
+  bgmStarting=true;bgm.volume=BGM_VOL;
+  const p=bgm.play();
+  if(p&&p.then)p.then(()=>{bgmStarting=false;}).catch(()=>{bgmStarting=false;});
+  else bgmStarting=false;
 }
+function startBGM(){playBGM();}
 function toggleMute(){
   muted=!muted;
   if(master)master.gain.value=muted?0:.9;
   const bgm=document.getElementById('bgm');
-  if(bgm){bgm.volume=muted?0:BGM_VOL;if(muted)bgm.pause();else{const p=bgm.play();if(p&&p.catch)p.catch(()=>{});}}
+  if(bgm){bgm.volume=muted?0:BGM_VOL;if(muted){bgm.pause();}else{playBGM();}}
   document.getElementById('muteBtn').textContent=muted?'🔇':'🔊';
 }
-function kickAudio(){audioKicked=true;try{ac();}catch(e){}startBGM();}
-['pointerdown','touchstart','click','keydown'].forEach(ev=>document.addEventListener(ev,kickAudio,{passive:true}));
+let kickT=0;
+function kickAudio(){const n=Date.now();if(n-kickT<300)return;kickT=n;audioKicked=true;try{ac();}catch(e){}playBGM();}
+['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,kickAudio,{passive:true}));
+/* 외부 링크(유튜브·인스타·폼)로 나갔다 오면 BGM이 꼬이지 않게 정리 */
+document.addEventListener('visibilitychange',()=>{
+  const bgm=document.getElementById('bgm');if(!bgm)return;
+  if(document.hidden){try{bgm.pause();}catch(e){}}
+  else{if(AC&&AC.state==='suspended'){try{AC.resume();}catch(e){}}if(!muted)setTimeout(playBGM,120);}
+});
 
 /* ==================== 배경 반딧불 / 가족 ==================== */
 for(let i=0;i<14;i++){const f=document.createElement('div');f.className='ff';f.style.left=(Math.random()*92+4)+'%';f.style.top=(Math.random()*70+18)+'%';f.style.setProperty('--dx',(Math.random()*60-30)+'px');f.style.setProperty('--dy',(Math.random()*-50-10)+'px');f.style.animation='drift '+(6+Math.random()*6)+'s ease-in-out '+(Math.random()*4)+'s infinite';app.appendChild(f);}
@@ -404,7 +417,8 @@ const fam=document.getElementById('famRow');
 [0,1,2,3].forEach(i=>{const im=document.createElement('img');im.src=CATS[i].img;fam.appendChild(im);});
 
 /* ==================== ITEMS & MISSIONS ==================== */
-const ITEMS={potion:0,hg:0,hint:0};
+const ITEMS={potion:0,hg:0,hint:0,cont:0};
+let bonusHint=false;
 const MISSIONS={insta:false,yt:false,share:false};
 const VISITED={insta:false,yt:false,share:false};
 const SHARE_MAX=2; let shareCount=0;
@@ -421,12 +435,15 @@ function doMission(kind){
   }
   MISSIONS[kind]=true;
   window.open(VERIFY_URL,'_blank','noopener'); /* 인증 폼 열기 */
-  if(kind==='insta'){ITEMS.potion=1;toast('🧪 물약 획득! 인증 폼을 제출해 주세요');}
-  if(kind==='yt'){ITEMS.hg=HG_USES;toast('⏳ 모래시계 '+HG_USES+'회 획득! 인증 폼을 제출해 주세요');}
+  if(kind==='insta')ITEMS.potion=1;
+  if(kind==='yt')ITEMS.hg=HG_USES;
+  let msg=(kind==='insta')?'🧪 물약 획득!':'⏳ 모래시계 '+HG_USES+'회 획득!';
+  if(MISSIONS.insta&&MISSIONS.yt&&!bonusHint){bonusHint=true;ITEMS.hint+=1;msg='🎉 인스타+유튜브 완료! '+(kind==='insta'?'🧪 물약':'⏳ 모래시계')+' + 💡 힌트 지급!';}
+  toast(msg+' 인증 폼을 제출해 주세요');
   sCorrect();refreshMissionUI();refreshItemUI();
 }
 function doShare(){
-  if(shareCount>=SHARE_MAX){toast('공유 미션을 모두 완료했어요! (힌트 '+SHARE_MAX+'회 획득)');return;}
+  if(shareCount>=SHARE_MAX){toast('공유 미션을 모두 완료했어요! (이어하기 1회 획득)');return;}
   openShareModal();
 }
 function openShareModal(){
@@ -449,10 +466,15 @@ function fallbackCopy(url,silent){
 function copyShareLink(){copyLink(location.href,false);}
 function confirmShare(){
   if(shareCount<SHARE_MAX){
-    shareCount++;ITEMS.hint=Math.min(ITEMS.hint+1,SHARE_MAX);
-    if(shareCount>=SHARE_MAX)MISSIONS.share=true;
-    sCorrect();refreshMissionUI();refreshItemUI();
-    toast('💡 힌트 획득! ('+shareCount+'/'+SHARE_MAX+') 어려운 문제의 해설을 볼 수 있어요');
+    shareCount++;
+    if(shareCount>=SHARE_MAX){
+      ITEMS.cont=1;MISSIONS.share=true;sCorrect();
+      toast('▶ 이어하기 1회 획득! 게임오버 시 이어서 진행할 수 있어요');
+    }else{
+      toast('공유 완료! ('+shareCount+'/'+SHARE_MAX+') 한 번 더 공유하면 ▶ 이어하기를 드려요');
+    }
+    refreshMissionUI();refreshItemUI();
+    if(document.getElementById('over').classList.contains('on'))renderOverButtons();
   }
   document.getElementById('shareModal').classList.remove('on');
 }
@@ -481,7 +503,7 @@ function setItem(id,bid,count,btxt){
   el.classList.remove('locked','ready','spent');
   if(count>0){el.classList.add('ready');b.textContent=btxt;}
   else{
-    const done=(id==='itPotion'&&MISSIONS.insta)||(id==='itHg'&&MISSIONS.yt)||(id==='itHint'&&MISSIONS.share);
+    const done=(id==='itPotion'&&MISSIONS.insta)||(id==='itHg'&&MISSIONS.yt)||(id==='itHint'&&MISSIONS.insta&&MISSIONS.yt);
     el.classList.add(done?'spent':'locked');b.textContent='';
   }
 }
@@ -683,16 +705,33 @@ function loseLife(){S.lives--;renderLives();if(S.lives<=0){setTimeout(gameOver,1
 function gameOver(){
   stopTimer();S.phase='over';sOver();
   document.getElementById('overOwl').src=CATS[0].img;
-  const miss=document.getElementById('missions'),note=document.getElementById('overNote'),sub=document.getElementById('overSub');
-  if(S.revived){miss.style.display='none';note.textContent='재도전 기회를 이미 사용했어요. 다음에 또 도전해 주세요!';sub.innerHTML='이번 판은 여기까지예요. 아쉽지만 재도전은 1회만 가능해요.';}
-  else{miss.style.display='flex';note.textContent='미션 인증 시 퍼즐판이 초기화되고 1회 재도전 기회가 주어집니다.';}
+  renderOverButtons();
   document.getElementById('over').classList.add('on');
 }
-function revive(){
-  sTap();
-  S.revived=true;S.stamped=Array(16).fill(false);S.lives=3;S.used=[];S.answered=0;S.catTurn=0;S.order=shufflePieces();S.pidx=0;S.curPiece=-1;S.wrongTaps=0;
+function renderOverButtons(){
+  const box=document.getElementById('overBtns');box.innerHTML='';
+  if(ITEMS.cont>0){
+    const b=document.createElement('div');b.className='mission cont';b.onclick=continueGame;
+    b.innerHTML='<span class="mi">▶</span> 이어하기 (남은 '+ITEMS.cont+'회) · 진행 그대로';
+    box.appendChild(b);
+  }
+  if(shareCount<SHARE_MAX){
+    const s=document.createElement('div');s.className='mission';s.onclick=doShare;
+    s.innerHTML='<span class="mi">🔗</span> 친구에게 공유하고 이어하기';
+    box.appendChild(s);
+  }
+  const r=document.createElement('div');r.className='mission reset';r.onclick=hardReset;
+  r.innerHTML='<span class="mi">🏠</span> 처음으로';
+  box.appendChild(r);
+  document.getElementById('overSub').innerHTML=ITEMS.cont>0
+    ?'목숨을 모두 사용했어요.<br><b style="color:#F4C95D">이어하기</b>로 진행 상황 그대로 계속하세요!'
+    :'목숨을 모두 사용했어요.<br>친구에게 공유하면 <b style="color:#F4C95D">이어서 도전</b>할 수 있어요!';
+}
+function continueGame(){
+  if(ITEMS.cont<=0){toast('이어하기가 없어요. 친구 공유로 얻을 수 있어요');return;}
+  sTap();ITEMS.cont--;S.lives=3;renderLives();refreshItemUI();
   document.getElementById('over').classList.remove('on');
-  buildBoard();renderLives();nextQuestion();
+  S.phase='idle';nextQuestion(); /* 진행(맞춘 조각) 그대로 이어서 */
 }
 function complete(){stopTimer();S.phase='done';sFanfare();document.getElementById('done').classList.add('on');bigConfetti();}
 
