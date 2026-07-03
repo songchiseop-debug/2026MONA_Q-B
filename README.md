@@ -49,3 +49,15 @@ README.md    ← 이 문서
 ## 🏢 제작
 
 모나용평 리조트 마케팅팀 · 2026 발왕산 여름 축제 사전 홍보 이벤트
+
+## 🔗 카카오톡 공유 미리보기 (중요)
+
+`index.html`과 같은 위치에 `og.jpg`(부엉이+퍼즐 미리보기 이미지)가 있어야 합니다.
+카카오톡·문자로 링크를 보낼 때 미리보기 이미지가 안정적으로 뜨게 하려면,
+`index.html` 상단의 `og:image`를 **전체 주소**로 바꿔주세요.
+
+예) 배포 주소가 `https://myid.github.io/balwangsan/` 이면
+```html
+<meta property="og:image" content="https://myid.github.io/balwangsan/og.jpg"/>
+```
+- 카카오톡은 미리보기를 캐시합니다. 안 바뀌면 카카오 developers의 'OG 캐시 초기화' 도구를 쓰거나 잠시 후 다시 시도하세요.
