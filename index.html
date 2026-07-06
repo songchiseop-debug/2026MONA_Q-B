@@ -203,11 +203,11 @@ body{font-family:'Gothic A1','Pretendard','Apple SD Gothic Neo',sans-serif;backg
 .entry-ok .msg{color:var(--cream);font-size:15px;font-weight:700;margin-top:8px;line-height:1.6;}
 .entry-ok .sub{color:var(--mossLt);font-size:12px;margin-top:6px;}
 .confetti{position:fixed;width:9px;height:14px;z-index:70;pointer-events:none;}
-.reset{position:absolute;top:12px;right:12px;z-index:8;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#cfe6d8;font-size:11px;font-weight:700;border-radius:9px;padding:6px 10px;}
+.reset{position:absolute;top:12px;left:56px;z-index:8;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#cfe6d8;font-size:11px;font-weight:700;border-radius:9px;padding:6px 10px;}
 .mute{position:absolute;top:12px;left:12px;z-index:8;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#cfe6d8;font-size:13px;border-radius:9px;padding:5px 9px;}
-.pause-btn{flex:0 0 auto;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#EAF3EC;font-size:14px;border-radius:9px;padding:5px 11px;cursor:pointer;line-height:1;}
-.pause-btn:active{transform:scale(.94);}
-.pause-ov{position:fixed;inset:0;z-index:96;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:26px;background:rgba(4,10,7,.98);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
+.pause-btn{position:absolute;top:11px;right:12px;z-index:9;background:linear-gradient(135deg,#F7D98A,#E7B21F);color:#0B1A22;font-family:inherit;font-weight:800;font-size:13px;border:none;border-radius:10px;padding:8px 13px;cursor:pointer;box-shadow:0 4px 12px rgba(231,178,31,.45);line-height:1;}
+.pause-btn:active{transform:scale(.95);}
+.pause-ov{position:absolute;inset:0;z-index:96;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:26px;background:rgba(5,14,10,.72);backdrop-filter:blur(16px) brightness(.5);-webkit-backdrop-filter:blur(16px) brightness(.5);}
 .pause-ov.on{display:flex;}
 .pause-ic{font-size:52px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5));}
 .pause-title{font-size:26px;font-weight:900;color:var(--cream);margin-top:8px;letter-spacing:1px;}
@@ -267,10 +267,10 @@ body{font-family:'Gothic A1','Pretendard','Apple SD Gothic Neo',sans-serif;backg
 
   <!-- ================= GAME ================= -->
   <section class="screen" id="game">
+    <button class="pause-btn" id="pauseBtn" onclick="pauseGame()">⏸ 일시정지</button>
     <div class="hud">
       <div class="lives" id="lives"></div>
       <div class="gauge" id="gauge"><span id="gfill"></span></div>
-      <button class="pause-btn" id="pauseBtn" onclick="pauseGame()">⏸</button>
     </div>
     <div class="board-wrap">
       <div class="frame"><div class="frame-inner">
