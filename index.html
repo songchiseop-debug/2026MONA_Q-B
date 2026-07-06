@@ -205,6 +205,13 @@ body{font-family:'Gothic A1','Pretendard','Apple SD Gothic Neo',sans-serif;backg
 .confetti{position:fixed;width:9px;height:14px;z-index:70;pointer-events:none;}
 .reset{position:absolute;top:12px;right:12px;z-index:8;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#cfe6d8;font-size:11px;font-weight:700;border-radius:9px;padding:6px 10px;}
 .mute{position:absolute;top:12px;left:12px;z-index:8;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#cfe6d8;font-size:13px;border-radius:9px;padding:5px 9px;}
+.pause-btn{flex:0 0 auto;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#EAF3EC;font-size:14px;border-radius:9px;padding:5px 11px;cursor:pointer;line-height:1;}
+.pause-btn:active{transform:scale(.94);}
+.pause-ov{position:fixed;inset:0;z-index:96;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:26px;background:rgba(4,10,7,.98);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
+.pause-ov.on{display:flex;}
+.pause-ic{font-size:52px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5));}
+.pause-title{font-size:26px;font-weight:900;color:var(--cream);margin-top:8px;letter-spacing:1px;}
+.pause-sub{color:var(--mossLt);font-size:13.5px;margin:10px 0 22px;line-height:1.6;font-weight:400;}
 </style></head>
 <body>
 <div class="app" id="app">
@@ -236,7 +243,7 @@ body{font-family:'Gothic A1','Pretendard','Apple SD Gothic Neo',sans-serif;backg
       </div>
       <div class="msn" id="msnShare" onclick="doMission('share')">
         <span class="mi">🔗</span>
-        <span class="mtxt"><span class="mname">친구에게 공유하기</span><span class="mre"><b>▶ 이어하기</b> · 게임오버 시 진행 그대로 (공유 2회 → 1회)</span></span>
+        <span class="mtxt"><span class="mname">친구에게 공유하기</span><span class="mre"><b>▶ 이어하기</b> · 게임오버 시 진행 그대로 이어하기 1회</span></span>
         <span class="mst">하러가기</span>
       </div>
       <div class="msn-bonus">📷 팔로우 + 📺 구독 <b>모두 인증</b>하면 <b>💡 힌트</b>를 추가로 드려요!</div>
@@ -250,10 +257,10 @@ body{font-family:'Gothic A1','Pretendard','Apple SD Gothic Neo',sans-serif;backg
   <div class="overlay" id="shareModal">
     <div class="mm-card">
       <div class="mm-head">🔗 친구에게 공유하기</div>
-      <div class="mm-desc">아래 링크가 <b>복사되었어요!</b><br>카카오톡·문자 등에 붙여넣어 친구에게 보내주세요.</div>
+      <div class="mm-desc">아래 링크가 <b>복사되었어요!</b><br>카카오톡·문자 등에 붙여넣어 친구에게 보내주세요.<br><b style="color:#F4C95D">▶ 이어하기 1회</b>가 지급되었습니다.</div>
       <div class="share-link" id="shareLinkBox"></div>
       <button class="btn btn-gold" onclick="copyShareLink()">🔗 링크 다시 복사</button>
-      <button class="btn btn-ghost" onclick="confirmShare()">공유했어요! ▶ 이어하기 받기</button>
+      <button class="btn btn-ghost" onclick="confirmShare()">확인</button>
       <button class="share-close" onclick="closeShare()">닫기</button>
     </div>
   </div>
@@ -263,6 +270,7 @@ body{font-family:'Gothic A1','Pretendard','Apple SD Gothic Neo',sans-serif;backg
     <div class="hud">
       <div class="lives" id="lives"></div>
       <div class="gauge" id="gauge"><span id="gfill"></span></div>
+      <button class="pause-btn" id="pauseBtn" onclick="pauseGame()">⏸</button>
     </div>
     <div class="board-wrap">
       <div class="frame"><div class="frame-inner">
@@ -301,6 +309,14 @@ body{font-family:'Gothic A1','Pretendard','Apple SD Gothic Neo',sans-serif;backg
   </section>
 
   <div class="toast" id="toast"></div>
+
+  <!-- 일시정지 (화면 어둡게 가림) -->
+  <div class="pause-ov" id="pauseModal">
+    <div class="pause-ic">⏸</div>
+    <div class="pause-title">일시정지</div>
+    <div class="pause-sub">타이머가 멈췄어요.<br>화면이 가려져 문제·퍼즐이 보이지 않아요.</div>
+    <button class="btn btn-gold" style="max-width:260px;" onclick="resumeGame()">▶ 계속하기</button>
+  </div>
 
   <!-- ================= GAME OVER ================= -->
   <div class="overlay" id="over">
@@ -429,7 +445,7 @@ const ITEMS={potion:0,hg:0,hint:0,cont:0};
 let bonusHint=false;
 const MISSIONS={insta:false,yt:false,share:false};
 const VISITED={insta:false,yt:false,share:false};
-const SHARE_MAX=2; let shareCount=0;
+const SHARE_MAX=1; let shareCount=0;
 function doMission(kind){
   sTap();
   if(kind==='share')return doShare();
@@ -450,15 +466,14 @@ function doMission(kind){
   toast(msg+' 인증 폼을 제출해 주세요');
   sCorrect();refreshMissionUI();refreshItemUI();
 }
-function doShare(){
-  if(shareCount>=SHARE_MAX){toast('공유 미션을 모두 완료했어요! (이어하기 1회 획득)');return;}
-  openShareModal();
-}
+function doShare(){openShareModal();}
 function openShareModal(){
   sTap();
   const url=location.href;
   document.getElementById('shareLinkBox').textContent=url;
   copyLink(url,true);
+  /* 공유(링크 복사) 시 즉시 이어하기 지급 + 저장 (새로고침에도 유지) */
+  if(shareCount<SHARE_MAX){shareCount++;ITEMS.cont=1;MISSIONS.share=true;sCorrect();refreshMissionUI();refreshItemUI();saveState();}
   document.getElementById('shareModal').classList.add('on');
 }
 function copyLink(url,silent){
@@ -473,18 +488,8 @@ function fallbackCopy(url,silent){
 }
 function copyShareLink(){copyLink(location.href,false);}
 function confirmShare(){
-  if(shareCount<SHARE_MAX){
-    shareCount++;
-    if(shareCount>=SHARE_MAX){
-      ITEMS.cont=1;MISSIONS.share=true;sCorrect();
-      toast('▶ 이어하기 1회 획득! 게임오버 시 이어서 진행할 수 있어요');
-    }else{
-      toast('공유 완료! ('+shareCount+'/'+SHARE_MAX+') 한 번 더 공유하면 ▶ 이어하기를 드려요');
-    }
-    refreshMissionUI();refreshItemUI();
-    if(document.getElementById('over').classList.contains('on'))renderOverButtons();
-  }
   document.getElementById('shareModal').classList.remove('on');
+  if(document.getElementById('over').classList.contains('on'))renderOverButtons();
 }
 function closeShare(){sTap();document.getElementById('shareModal').classList.remove('on');}
 function refreshMissionUI(){
@@ -496,7 +501,7 @@ function refreshMissionUI(){
   const se=document.getElementById('msnShare');
   if(se){const done=shareCount>=SHARE_MAX;
     se.classList.toggle('done',done);
-    se.querySelector('.mst').textContent=done?'완료 ✓':(shareCount>0?'또 공유 ('+shareCount+'/'+SHARE_MAX+')':'하러가기');
+    se.querySelector('.mst').textContent=done?'완료 ✓':'하러가기';
   }
 }
 function refreshItemUI(){
@@ -597,13 +602,27 @@ function renderLives(){const lv=document.getElementById('lives');lv.innerHTML=''
 function startGame(){sTap();startBGM();clearState();S=fresh();document.getElementById('intro').classList.remove('on');document.getElementById('game').classList.add('on');buildBoard();renderLives();refreshItemUI();nextQuestion();}
 
 /* ==================== TIMER (20초 / 모래시계 40초) ==================== */
-let timer=null,tLeft=TIME_BASE,tMax=TIME_BASE;
+let timer=null,tLeft=TIME_BASE,tMax=TIME_BASE,paused=false;
 function startTimer(){ /* 새 문제: 20초로 리셋 */
   const gg=document.getElementById('gauge');gg.classList.remove('slow');
   tMax=TIME_BASE;tLeft=TIME_BASE;updateGauge();runTimer();
 }
-function runTimer(){clearInterval(timer);timer=setInterval(()=>{tLeft-=0.1;if(tLeft<=0){tLeft=0;updateGauge();clearInterval(timer);onTimeout();return;}updateGauge();},100);}
+function runTimer(){clearInterval(timer);timer=setInterval(()=>{if(paused)return;tLeft-=0.1;if(tLeft<=0){tLeft=0;updateGauge();clearInterval(timer);onTimeout();return;}updateGauge();},100);}
 function pauseTimer(){clearInterval(timer);}
+function pauseGame(){
+  if(paused)return;
+  if(!document.getElementById('game').classList.contains('on'))return;
+  if(S.phase==='over'||S.phase==='done')return;
+  paused=true;sTap();
+  document.getElementById('pauseModal').classList.add('on');
+  stopBGM();
+}
+function resumeGame(){
+  if(!paused)return;
+  paused=false;sTap();
+  document.getElementById('pauseModal').classList.remove('on');
+  if(bgmWanted&&!muted&&!bgmSched){const c=ac();bgmOn=true;bgmNext=c.currentTime+0.12;bgmStep=0;bgmScheduler();}
+}
 function updateGauge(){const p=Math.max(0,tLeft/tMax*100);document.getElementById('gfill').style.width=p+'%';const sec=Math.ceil(tLeft);const os=document.getElementById('owlSec');if(os)os.textContent=sec;document.getElementById('gauge').classList.toggle('low',tLeft<6);document.getElementById('owlTimer').classList.toggle('low',tLeft<6);}
 function stopTimer(){clearInterval(timer);}
 
