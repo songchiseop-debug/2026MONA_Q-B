@@ -410,13 +410,14 @@ function toggleMute(){
   document.getElementById('muteBtn').textContent=muted?'🔇':'🔊';
 }
 /* 인트로 포함 모든 탭: 효과음용 오디오 컨텍스트만 활성화 (BGM은 시작 안 함) */
-function kickSFX(){try{ac();}catch(e){}}
+function kickSFX(){try{ac();}catch(e){}if(bgmWanted&&!bgmOn&&!muted)startBGM();}
 ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,kickSFX,{passive:true}));
 /* 화면을 벗어나면 BGM 스케줄러 정지, 돌아오면 이어서 (게임 시작 이후) */
 document.addEventListener('visibilitychange',()=>{
-  if(document.hidden){stopBGM();}
+  if(document.hidden){saveState();stopBGM();}
   else if(bgmWanted&&!muted&&!bgmSched){const c=ac();bgmOn=true;bgmNext=c.currentTime+0.12;bgmStep=0;bgmScheduler();}
 });
+window.addEventListener('pagehide',saveState);
 
 /* ==================== 배경 반딧불 / 가족 ==================== */
 for(let i=0;i<14;i++){const f=document.createElement('div');f.className='ff';f.style.left=(Math.random()*92+4)+'%';f.style.top=(Math.random()*70+18)+'%';f.style.setProperty('--dx',(Math.random()*60-30)+'px');f.style.setProperty('--dy',(Math.random()*-50-10)+'px');f.style.animation='drift '+(6+Math.random()*6)+'s ease-in-out '+(Math.random()*4)+'s infinite';app.appendChild(f);}
@@ -549,6 +550,35 @@ let S={};
 function shufflePieces(){const a=[...Array(16).keys()];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function fresh(){return {stamped:Array(16).fill(false),used:[],lives:3,answered:0,catTurn:0,phase:'idle',curQ:null,curCat:0,revived:false,order:shufflePieces(),pidx:0,curPiece:-1,wrongTaps:0};}
 S=fresh();
+
+/* ===== 진행상황 저장/복구 (카톡 인앱 새로고침 대비) ===== */
+const SAVE_KEY='balwangsan_session';
+function saveState(){
+  try{
+    if(!document.getElementById('game').classList.contains('on'))return;
+    localStorage.setItem(SAVE_KEY,JSON.stringify({
+      v:1,t:Date.now(),
+      S:{stamped:S.stamped,used:S.used,lives:S.lives,answered:S.answered,catTurn:S.catTurn,pidx:S.pidx,order:S.order,curPiece:S.curPiece,wrongTaps:S.wrongTaps,revived:S.revived},
+      items:ITEMS,missions:MISSIONS,visited:VISITED,shareCount:shareCount,bonusHint:bonusHint
+    }));
+  }catch(e){}
+}
+function clearState(){try{localStorage.removeItem(SAVE_KEY);}catch(e){}}
+function loadState(){
+  let d;try{d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');}catch(e){d=null;}
+  if(!d||!d.S)return false;
+  if(Date.now()-(d.t||0)>12*3600*1000){clearState();return false;}
+  if(d.S.stamped&&d.S.stamped.filter(Boolean).length>=16){clearState();return false;}
+  Object.assign(ITEMS,d.items||{});Object.assign(MISSIONS,d.missions||{});Object.assign(VISITED,d.visited||{});
+  shareCount=d.shareCount||0;bonusHint=!!d.bonusHint;
+  S=fresh();Object.assign(S,d.S);S.phase='idle';S.curQ=null;
+  document.getElementById('intro').classList.remove('on');
+  document.getElementById('game').classList.add('on');
+  buildBoard();renderLives();refreshItemUI();
+  bgmWanted=true; /* 게임 중이므로 다음 탭에서 BGM 재개 */
+  if(S.lives<=0){gameOver();}else{nextQuestion();}
+  return true;
+}
 const grid=document.getElementById('grid');
 function buildBoard(){
   let defs='<defs><linearGradient id="covG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1B4252"/><stop offset="1" stop-color="#10302A"/></linearGradient>';
@@ -564,7 +594,7 @@ function buildBoard(){
 function updatePieces(){document.getElementById('pieceCnt').textContent=S.stamped.filter(Boolean).length;}
 function renderLives(){const lv=document.getElementById('lives');lv.innerHTML='';const total=Math.max(3,S.lives);for(let i=0;i<total;i++){lv.insertAdjacentHTML('beforeend','<svg class="heart'+(i<S.lives?'':' dead')+'" viewBox="-12 -12 24 24"><path d="M0,3 C-4,-3 -11,-1 -8,5 C-6,9 0,11 0,11 C0,11 6,9 8,5 C11,-1 4,-3 0,3 Z" fill="#FF6B7A"/></svg>');}}
 
-function startGame(){sTap();startBGM();S=fresh();document.getElementById('intro').classList.remove('on');document.getElementById('game').classList.add('on');buildBoard();renderLives();refreshItemUI();nextQuestion();}
+function startGame(){sTap();startBGM();clearState();S=fresh();document.getElementById('intro').classList.remove('on');document.getElementById('game').classList.add('on');buildBoard();renderLives();refreshItemUI();nextQuestion();}
 
 /* ==================== TIMER (20초 / 모래시계 40초) ==================== */
 let timer=null,tLeft=TIME_BASE,tMax=TIME_BASE;
@@ -606,7 +636,7 @@ function nextQuestion(){
   grid.classList.remove('place');
   const opts=document.getElementById('opts');opts.innerHTML='';
   Q.o.forEach((o,i)=>{const b=document.createElement('button');b.className='opt';b.textContent=o;b.onclick=()=>answer(i,b);opts.appendChild(b);});
-  startTimer();
+  startTimer();saveState();
 }
 function answer(idx,btn){
   if(S.phase!=='quiz')return;
@@ -685,7 +715,7 @@ function placeCell(i){
       document.getElementById('cov'+i).classList.add('open');
       document.getElementById('artp'+i).classList.add('open');
       sFlip();burstFixed(tx,ty);
-      updatePieces();S.phase='idle';
+      updatePieces();S.phase='idle';saveState();
       if(S.stamped.filter(Boolean).length>=16){setTimeout(complete,950);return;}
       setTimeout(nextQuestion,780);
     });
@@ -706,7 +736,7 @@ function showTray(piece){
   t.classList.add('show');
 }
 function hideTray(){const t=document.getElementById('tray');t.classList.remove('show');t.innerHTML='';}
-function loseLife(){S.lives--;renderLives();if(S.lives<=0){setTimeout(gameOver,1300);}}
+function loseLife(){S.lives--;renderLives();saveState();if(S.lives<=0){setTimeout(gameOver,1300);}}
 
 /* ==================== OVERLAYS ==================== */
 function gameOver(){
@@ -738,9 +768,9 @@ function continueGame(){
   if(ITEMS.cont<=0){toast('이어하기가 없어요. 친구 공유로 얻을 수 있어요');return;}
   sTap();ITEMS.cont--;S.lives=3;renderLives();refreshItemUI();
   document.getElementById('over').classList.remove('on');
-  S.phase='idle';nextQuestion(); /* 진행(맞춘 조각) 그대로 이어서 */
+  S.phase='idle';saveState();nextQuestion(); /* 진행(맞춘 조각) 그대로 이어서 */
 }
-function complete(){stopTimer();S.phase='done';sFanfare();document.getElementById('done').classList.add('on');bigConfetti();}
+function complete(){stopTimer();S.phase='done';clearState();sFanfare();document.getElementById('done').classList.add('on');bigConfetti();}
 
 /* ==================== 응모 ==================== */
 const ENTRY_KEY='balwangsan_puzzle_entries';
@@ -769,6 +799,23 @@ window.addEventListener('hashchange',()=>{if(location.hash==='#admin')openAdmin(
 /* 또는 하단 문구 5번 탭 */
 let _admTap=0,_admT=0;
 document.addEventListener('DOMContentLoaded',()=>{const f=document.querySelector('.i-foot');if(f)f.addEventListener('click',()=>{const n=Date.now();if(n-_admT>2500)_admTap=0;_admT=n;if(++_admTap>=5){_admTap=0;openAdmin();}});});
+/* 구글폼 응모 연동 */
+const GFORM={
+  url:'https://docs.google.com/forms/d/e/1FAIpQLSf6Ez5HY4eI6Mgyhl60BiTAOzvztDxFd9OmmlOID2hr95nu_g/formResponse',
+  name:'entry.1482777999',
+  phone:'entry.1603157489'
+};
+function sendToGoogleForm(name,phone){
+  try{
+    const fd=new FormData();
+    fd.append(GFORM.name,name);
+    fd.append(GFORM.phone,phone);
+    fetch(GFORM.url,{method:'POST',mode:'no-cors',body:fd}).catch(()=>{
+      /* 폴백: 숨김 이미지로 GET 제출 */
+      new Image().src=GFORM.url.replace('/formResponse','/formResponse')+'?'+GFORM.name+'='+encodeURIComponent(name)+'&'+GFORM.phone+'='+encodeURIComponent(phone)+'&submit=Submit';
+    });
+  }catch(e){}
+}
 function submitEntry(){
   sTap();
   const name=document.getElementById('inName').value.trim();
@@ -778,6 +825,7 @@ function submitEntry(){
   const entries=getEntries();
   if(entries.some(e=>e.phone===phone)){toast('⚠️ 이미 응모한 전화번호예요. 같은 번호로는 1회만 응모할 수 있어요');return;}
   if(!confirm('입력하신 정보로 응모할까요?\n\n이름: '+name+'\n전화번호: '+phone.replace(/(\d{3})(\d{3,4})(\d{4})/,'$1-$2-$3')+'\n\n※ 응모 후에는 수정이 어렵습니다.')){return;}
+  sendToGoogleForm(name,phone); /* 구글폼(구글시트)으로 전송 */
   entries.push({name,phone,date:new Date().toISOString()});
   try{localStorage.setItem(ENTRY_KEY,JSON.stringify(entries));}catch(e){}
   document.getElementById('entryForm').style.display='none';
@@ -798,7 +846,7 @@ function hardReset(){
   document.getElementById('entryForm').style.display='';document.getElementById('entryOk').classList.remove('on');
   document.getElementById('inName').value='';document.getElementById('inPhone').value='';
   document.getElementById('game').classList.remove('on');document.getElementById('intro').classList.add('on');
-  S=fresh();refreshMissionUI();refreshItemUI();
+  clearState();S=fresh();refreshMissionUI();refreshItemUI();
 }
 
 /* ==================== FX ==================== */
@@ -808,4 +856,6 @@ function burstFixed(cx,cy){for(let i=0;i<14;i++){const p=document.createElement(
 function bigConfetti(){const cols=['#F4C95D','#52B788','#FCE7A0','#FF6B7A','#B7E4C7'];for(let i=0;i<44;i++){const c=document.createElement('div');c.className='confetti';c.style.left=Math.random()*100+'%';c.style.top='-20px';c.style.background=cols[i%cols.length];c.style.transform='rotate('+Math.random()*360+'deg)';document.body.appendChild(c);c.animate([{transform:'translateY(0) rotate(0)',opacity:1},{transform:'translateY(105vh) rotate('+(720*(Math.random()>.5?1:-1))+'deg)',opacity:.9}],{duration:1500+Math.random()*900,easing:'cubic-bezier(.3,.6,.5,1)'}).onfinish=()=>c.remove();}}
 
 refreshMissionUI();refreshItemUI();
+/* 카톡 인앱 등에서 새로고침돼도 진행상황 복구 */
+try{if(location.hash!=='#admin')loadState();}catch(e){}
 </script></body></html>
