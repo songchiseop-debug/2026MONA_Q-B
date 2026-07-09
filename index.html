@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<!-- Google Analytics 4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-TGJP5XC43X"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-TGJP5XC43X');
+  window.trackEvent = function(name, params){ try{ gtag('event', name, params || {}); }catch(e){} };
+</script>
 <title>2026 모나용평 발왕산 여름 축제 · 퀴즈 퍼즐</title>
 <meta property="og:type" content="website"/>
 <meta property="og:title" content="2026 모나용평 발왕산 여름 축제 · 퀴즈 퍼즐"/>
@@ -245,7 +254,10 @@ body{font-family:'Gothic A1','Pretendard','Apple SD Gothic Neo',sans-serif;backg
 .pause-ic{font-size:52px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5));}
 .pause-title{font-size:26px;font-weight:900;color:var(--cream);margin-top:8px;letter-spacing:1px;}
 .pause-sub{color:var(--mossLt);font-size:13.5px;margin:10px 0 22px;line-height:1.6;font-weight:400;}
-</style></head>
+</style><script>
+if(typeof window.trackEvent!=='function'){window.trackEvent=function(){};}
+</script>
+</head>
 <body>
 <div class="app" id="app">
   <button class="mute" id="muteBtn" onclick="toggleMute()">🔊</button>
@@ -508,6 +520,7 @@ function doMission(kind){
     return;
   }
   MISSIONS[kind]=true;
+  trackEvent('mission_verify',{mission:kind});
   window.open(VERIFY_URL,'_blank','noopener'); /* 인증 폼 열기 */
   if(kind==='insta')ITEMS.potion=1;
   if(kind==='yt')ITEMS.hg=HG_USES;
@@ -516,7 +529,7 @@ function doMission(kind){
   toast(msg+' 인증 폼을 제출해 주세요');
   sCorrect();refreshMissionUI();refreshItemUI();
 }
-function doShare(){openShareModal();}
+function doShare(){trackEvent('share_game');openShareModal();}
 function openShareModal(){
   sTap();
   const url=location.href;
@@ -649,7 +662,7 @@ function buildBoard(){
 function updatePieces(){document.getElementById('pieceCnt').textContent=S.stamped.filter(Boolean).length;}
 function renderLives(){const lv=document.getElementById('lives');lv.innerHTML='';const total=Math.max(3,S.lives);for(let i=0;i<total;i++){lv.insertAdjacentHTML('beforeend','<svg class="heart'+(i<S.lives?'':' dead')+'" viewBox="-12 -12 24 24"><path d="M0,3 C-4,-3 -11,-1 -8,5 C-6,9 0,11 0,11 C0,11 6,9 8,5 C11,-1 4,-3 0,3 Z" fill="#FF6B7A"/></svg>');}}
 
-function startGame(){sTap();startBGM();clearState();S=fresh();document.getElementById('intro').classList.remove('on');document.getElementById('game').classList.add('on');buildBoard();renderLives();refreshItemUI();nextQuestion();}
+function startGame(){sTap();trackEvent('game_start');startBGM();clearState();S=fresh();document.getElementById('intro').classList.remove('on');document.getElementById('game').classList.add('on');buildBoard();renderLives();refreshItemUI();nextQuestion();}
 
 /* ==================== TIMER (20초 / 모래시계 40초) ==================== */
 let timer=null,tLeft=TIME_BASE,tMax=TIME_BASE,paused=false;
@@ -710,6 +723,7 @@ function answer(idx,btn){
   if(S.phase!=='quiz')return;
   pauseTimer();S.phase='reveal';S.answered++;
   const Q=QUESTIONS[S.curQ];
+  trackEvent('quiz_answer',{correct:idx===Q.a,category:CATS[Q.c]?CATS[Q.c].name:'',q_index:S.curQ});
   const opts=[...document.querySelectorAll('#opts .opt')];
   opts.forEach(o=>o.classList.add('dim'));
   opts[Q.a].classList.remove('dim');opts[Q.a].classList.add('correct');
@@ -783,7 +797,7 @@ function placeCell(i){
       document.getElementById('cov'+i).classList.add('open');
       document.getElementById('artp'+i).classList.add('open');
       sFlip();burstFixed(tx,ty);
-      updatePieces();S.phase='idle';saveState();
+      updatePieces();S.phase='idle';trackEvent('piece_placed',{count:S.stamped.filter(Boolean).length});saveState();
       if(S.stamped.filter(Boolean).length>=16){setTimeout(complete,950);return;}
       setTimeout(nextQuestion,780);
     });
@@ -808,7 +822,7 @@ function loseLife(){S.lives--;renderLives();saveState();if(S.lives<=0){setTimeou
 
 /* ==================== OVERLAYS ==================== */
 function gameOver(){
-  stopTimer();S.phase='over';sOver();
+  stopTimer();S.phase='over';trackEvent('game_over',{pieces:S.stamped.filter(Boolean).length,answered:S.answered});sOver();
   document.getElementById('overOwl').src=CATS[0].img;
   renderOverButtons();
   document.getElementById('over').classList.add('on');
@@ -843,11 +857,11 @@ function renderOverButtons(){
 }
 function continueGame(){
   if(ITEMS.cont<=0){toast('이어하기가 없어요. 친구 공유로 얻을 수 있어요');return;}
-  sTap();ITEMS.cont--;S.lives=3;renderLives();refreshItemUI();
+  sTap();trackEvent('continue_game');ITEMS.cont--;S.lives=3;renderLives();refreshItemUI();
   document.getElementById('over').classList.remove('on');
   S.phase='idle';saveState();nextQuestion(); /* 진행(맞춘 조각) 그대로 이어서 */
 }
-function complete(){stopTimer();S.phase='done';clearState();showCelebrate();}
+function complete(){stopTimer();S.phase='done';trackEvent('game_clear',{answered:S.answered,wrong_taps:S.wrongTaps,revived:!!S.revived});clearState();showCelebrate();}
 function showCelebrate(){
   for(let i=0;i<4;i++){const el=document.getElementById('celOwl'+i);if(el)el.src=CATS[i].img;}
   const cel=document.getElementById('celebrate');
@@ -915,6 +929,7 @@ function submitEntry(){
   const entries=getEntries();
   if(entries.some(e=>e.phone===phone)){toast('⚠️ 이미 응모한 전화번호예요. 같은 번호로는 1회만 응모할 수 있어요');return;}
   if(!confirm('입력하신 정보로 응모할까요?\n\n이름: '+name+'\n전화번호: '+phone.replace(/(\d{3})(\d{3,4})(\d{4})/,'$1-$2-$3')+'\n\n※ 응모 후에는 수정이 어렵습니다.')){return;}
+  trackEvent('entry_submit');
   sendToGoogleForm(name,phone); /* 구글폼(구글시트)으로 전송 */
   entries.push({name,phone,date:new Date().toISOString()});
   try{localStorage.setItem(ENTRY_KEY,JSON.stringify(entries));}catch(e){}
